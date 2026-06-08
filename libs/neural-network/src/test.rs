@@ -1,4 +1,6 @@
 use approx::assert_relative_eq;
+use rand::SeedableRng;
+use rand_chacha::ChaCha8Rng;
 
 use crate::Neuron;
 
