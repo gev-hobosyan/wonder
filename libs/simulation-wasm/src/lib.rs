@@ -1,4 +1,4 @@
-use lib_simulation as sim;
+use lib_simulation::{self as sim};
 use rand::{prelude::*, rng};
 use wasm_bindgen::prelude::*;
 
@@ -21,6 +21,10 @@ impl Simulation {
     pub fn world(&self) -> World {
         World::from(self.sim.world())
     }
+
+    pub fn step(&mut self) {
+        self.sim.step();
+    }
 }
 
 #[wasm_bindgen]
@@ -28,6 +32,9 @@ impl Simulation {
 pub struct World {
     #[wasm_bindgen(getter_with_clone)]
     pub animals: Vec<Animal>,
+
+    #[wasm_bindgen(getter_with_clone)]
+    pub foods: Vec<Food>,
 }
 
 #[wasm_bindgen]
@@ -38,11 +45,28 @@ pub struct Animal {
     pub rotation: f32,
 }
 
+#[wasm_bindgen]
+#[derive(Debug, Clone)]
+pub struct Food {
+    pub x: f32,
+    pub y: f32,
+}
+
 impl From<&sim::World> for World {
     fn from(world: &sim::World) -> Self {
         let animals = world.animals().iter().map(Animal::from).collect();
+        let foods = world.foods().iter().map(Food::from).collect();
 
-        Self { animals }
+        Self { animals, foods }
+    }
+}
+
+impl From<&sim::Food> for Food {
+    fn from(food: &sim::Food) -> Self {
+        Self {
+            x: food.position().x,
+            y: food.position().y,
+        }
     }
 }
 
