@@ -58,6 +58,10 @@ context.fillStyle = "rgb(0, 0, 0)";
 
 const simulation = new sim.Simulation();
 
+document.getElementById("train").onclick = () => {
+	console.log(simulation.train());
+};
+
 function redraw() {
 	context.clearRect(0, 0, viewportWidth, viewportHeight);
 

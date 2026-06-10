@@ -1,42 +1,90 @@
 mod animal;
+mod animal_individual;
+mod brain;
 mod eye;
 mod food;
 mod world;
 
-pub use self::{animal::*, eye::*, food::*, world::*};
+pub use self::{animal::*, animal_individual::*, brain::*, eye::*, food::*, world::*};
+pub use lib_genetic_algorithm as ga;
+pub use lib_neural_network as nn;
 use nalgebra as na;
 use rand::{Rng, RngExt};
 
 use std::f32::consts::FRAC_PI_2;
 
 const SPEED_MIN: f32 = 0.001;
-
 const SPEED_MAX: f32 = 0.005;
-
 const SPEED_ACCEL: f32 = 0.2;
-
 const ROTATION_ACCEL: f32 = FRAC_PI_2;
+const GENERATION_LENGTH: usize = 2500;
 
-#[derive(Debug)]
 pub struct Simulation {
     world: World,
+    ga: ga::GeneticAlgorithm<ga::RandomWheelSelection>,
+    age: usize,
 }
 
 impl Simulation {
     pub fn random(rng: &mut dyn Rng) -> Self {
-        Self {
-            world: World::random(rng),
-        }
+        let world = World::random(rng);
+
+        let ga = ga::GeneticAlgorithm::new(
+            ga::RandomWheelSelection,
+            ga::UniformCrossover,
+            ga::GaussianMutation::new(0.01, 0.3),
+        );
+
+        Self { world, ga, age: 0 }
     }
 
     pub fn world(&self) -> &World {
         &self.world
     }
 
-    pub fn step(&mut self, rng: &mut dyn Rng) {
+    pub fn step(&mut self, rng: &mut dyn Rng) -> Option<ga::Statistics> {
         self.process_collisions(rng);
         self.process_brains();
         self.process_movements();
+
+        self.age += 1;
+        if self.age > GENERATION_LENGTH {
+            Some(self.evolve(rng))
+        } else {
+            None
+        }
+    }
+
+    pub fn train(&mut self, rng: &mut dyn Rng) -> ga::Statistics{
+        loop {
+            if let Some(summary) = self.step(rng) {
+                return summary;
+            }
+        }
+    }
+
+    fn evolve(&mut self, rng: &mut dyn Rng) -> ga::Statistics {
+        self.age = 0;
+
+        let current_population: Vec<_> = self
+            .world
+            .animals
+            .iter()
+            .map(|animal| AnimalIndividual::from_animal(animal))
+            .collect();
+
+        let (evolved_population, stats) = self.ga.evolve(rng, &current_population);
+
+        self.world.animals = evolved_population
+            .into_iter()
+            .map(|individual| individual.into_animal(rng))
+            .collect();
+
+        for food in &mut self.world.foods {
+            food.position = rng.random();
+        }
+
+        stats
     }
 
     fn process_collisions(&mut self, rng: &mut dyn Rng) {
@@ -45,7 +93,8 @@ impl Simulation {
                 let distance = na::distance(&animal.position, &food.position);
 
                 if distance <= 0.01 {
-                    food.position = rng.random()
+                    food.position = rng.random();
+                    animal.eaten_foods += 1;
                 }
             }
         }
@@ -67,7 +116,7 @@ impl Simulation {
                     .eye
                     .process_vision(animal.position, animal.rotation, &self.world.foods);
 
-            let response = animal.brain.propagate(vision);
+            let response = animal.brain.nn.propagate(vision);
 
             let speed = response[0].clamp(-SPEED_ACCEL, SPEED_ACCEL);
             let rotation = response[1].clamp(-ROTATION_ACCEL, ROTATION_ACCEL);
