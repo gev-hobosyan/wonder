@@ -17,14 +17,19 @@ impl Network {
         inputs
     }
 
-    pub fn random(rng: &mut dyn Rng, neurons_per_layer: &[usize]) -> Self {
-        let layers = neurons_per_layer
+    pub fn random(rng: &mut dyn Rng, layers: Vec<LayerTopology>) -> Self {
+        let layers = layers
             .windows(2)
-            .map(|layers| Layer::random(rng, layers[0], layers[1]))
+            .map(|layers| Layer::random(rng, layers[0].neurons, layers[1].neurons))
             .collect();
 
         Self { layers }
     }
+}
+
+#[derive(Debug)]
+pub struct LayerTopology {
+    pub neurons: usize,
 }
 
 #[derive(Debug)]

@@ -61,9 +61,9 @@ const simulation = new sim.Simulation();
 function redraw() {
 	context.clearRect(0, 0, viewportWidth, viewportHeight);
 
-	const world = simulation.world();
-
 	simulation.step();
+
+	const world = simulation.world();
 
 	for (const food of world.foods) {
 		context.drawCircle(
@@ -81,6 +81,8 @@ function redraw() {
 			animal.rotation,
 		);
 	}
+
+	world.free();
 
 	requestAnimationFrame(redraw);
 }
